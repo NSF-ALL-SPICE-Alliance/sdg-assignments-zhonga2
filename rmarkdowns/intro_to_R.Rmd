@@ -107,6 +107,11 @@ my_age + 5 # how old will you be in 5 years?
 
 #### <span style="color: red;">Challenge 1</span>
 Create a my_name variable with your name assigned to the variable instead of "Victoria DelaCruz". Then, create a my_age variable with your age. 
+```{r}
+my_name <- "Anthony Zhong"
+my_age = 20
+```
+
 
 #### Different Types of Data
 
