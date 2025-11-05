@@ -133,7 +133,7 @@ Create a scatterplot using two different SDG scores. Then, color the points by u
 ```{r}
 ggplot(data = sdr_data, aes(x = goal_9_score, y = goal_8_score, color = goal_12_score)) + geom_point()
 ```
-Interpretation: The scatter-plot shows a positive correlation between Goal 9 (Industry, Innovation, and Infrastructure) and Goal 8 (Decent Work and Economic Growth), illustrating that countries with higher innovation and infrastructure scores also tend to have higher economic growth. However, the blue color gradient of Goal 12 (Responsible Consumption and Production) suggests an inverse relationship. Countries with higher Goal 12 scores mostly appear in the lower-left quadratic (low Goal 8 and 9 scores), while those with lower Goal 12 scores cluster towards the upper-right quadratic (high Goal 8 and 9 scores).
+Interpretation: The scatter-plot shows a positive correlation between Goal 9 (Industry, Innovation, and Infrastructure) and Goal 8 (Decent Work and Economic Growth), illustrating that countries with higher innovation and infrastructure scores also tend to have higher economic growth. However, the blue color gradient of Goal 12 (Responsible Consumption and Production) suggests an inverse relationship. Countries with higher Goal 12 scores mostly appear in the lower-left quadratic (low Goal 8 and 9 scores), while those with lower Goal 12 scores cluster towards the upper-right quadratic (high Goal 8 and 9 scores). This may imply that to reach a high score in goal 8 and 9 may require conceding scores in goal 12.  
 
 
 ### Bar Chart
@@ -194,6 +194,15 @@ As we can see in the Oceania region, most Countries do not have the necessary da
 
 #### <span style="color: red;">Challenge 2</span>
 Create a new bar chart with countries only from the MENA region. 
+```{r}
+# Filter data to only Middle East and North Africa region
+mena_sdg_region <- sdr_data %>% filter(regions_used_for_the_sdr == "MENA")
+
+# Plot a bar chart of MENA region countries and their respective goal 3 scores
+ggplot(data = mena_sdg_region, aes(x = goal_3_score, y = country)) + 
+  geom_bar(stat = "identity")
+```
+
 
 ### Histogram
 
