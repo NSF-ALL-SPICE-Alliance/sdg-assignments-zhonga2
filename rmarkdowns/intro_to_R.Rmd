@@ -77,6 +77,7 @@ To be able to use the package and its functions in R Studio, we need to load the
 ```{r, message=FALSE}
 library(tidyverse) # put the name of the package/library in the parenthesis 
 ```
+
 Awesome! Now we can access the many cool things that the tidyverse package can do for us. We'll start using this package and its functions as we go along.
 
 [Check out the tidyverse package documentation](https://www.tidyverse.org/)
@@ -204,7 +205,6 @@ Example of this kind of error pictured here:
 In the code chunk below, we use the `read_csv()` function to read in the csv file called *SDR-2023-Data.csv* in our data folder. 
 
   - We use the `here()` function to cut out long file paths. Instead of starting at the home directory on our computer and having to point R towards the csv file we want to read in with *"Users/Victoria/data_science/SDR-2023-Landscape/SDR-2023-Data.csv"*, we can simply tell R to start within the directory of our current R project and find the SDR-2023-Data.csv in our data folder. 
-  
     - This also **ensures reproducibility** because as long as we share R projects on github, our project directories will always be the same
 ```{r, message=FALSE}
 sdr_data <- read_csv(here("data/SDR-2023-Data.csv")) # assigning the dataset to a variable so that we can look at/reference it
@@ -236,7 +236,6 @@ Wow, that's a lot of information on the dataset structure! Let's run some code t
 - Viewing column names
 ```{r}
 column_names <- as.list(colnames(sdr_data))  # click on column_names in your environment pane at the top right of your screen to check them out
-
 ```
 
 - How many rows and columns
@@ -298,6 +297,14 @@ What if we want to subset specific rows? We can do this by using the filter func
 
 #### <span style="color: red;">Challenge 2</span>
 Using the `select()` function, select two new SDG goal scores. Assign it to a variable named `SDG_scores`. 
+```{r}
+# Get a subset of sdr_data of goal_8_score and goal_9_score
+SDG_scores <- 
+  sdr_data %>%
+  select(goal_8_score, goal_9_score)
+
+SDG_scores
+```
 
 *2. filter()*
 
@@ -318,6 +325,21 @@ Notes:
 
 #### <span style="color: red;">Challenge 3</span>
 Using the `filter()` function, filter for another region other than Oceania. Assign it to a variable named `new_region`. 
+```{r}
+# Selects distinct values in regions_used_for_the_dsr column in sdr_data
+sdr_data %>%
+  select(regions_used_for_the_sdr) %>%
+  group_by(regions_used_for_the_sdr) %>%
+  distinct(regions_used_for_the_sdr)
+
+# Create a new dataframe called new_region where data is filtered by the Sub-Saharan Africa region
+new_region <-
+  sdr_data %>%
+  filter(regions_used_for_the_sdr == "Sub-Saharan Africa")
+
+# Prints new_region on solve
+new_region
+```
 
 **Important**
 
