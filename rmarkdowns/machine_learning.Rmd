@@ -217,22 +217,22 @@ fviz_nbclust(sdr_data_imputed, kmeans, method = "silhouette")
 The kmeans() function clusters countries into groups (int this case 2, visualized above) based on 84 SDG scores
 
 ```{r}
-k2 <- kmeans(sdr_data_imputed, centers = 2)
+k3 <- kmeans(sdr_data_imputed, centers = 3) # For Challenge #1, I changed the amount of clusters countries from 2 to 3, despite having a lower silhouette width
 ```
 
 
 We can visualize the outputs of the kmeans function with fviz_cluster()
 
 ```{r}
-fviz_cluster(k2, data = sdr_data_imputed) +
-  theme_minimal()
+fviz_cluster(k3, data = sdr_data_imputed) +
+  theme_minimal() # Changed from k2 to k3
 ```
 
 You can view the countries and their assigned cluster in a dataframe with the code below
 
 
 ```{r}
-country_clusters <- as.data.frame(k2$cluster)
+country_clusters <- as.data.frame(k3$cluster) # Country_clusters dataframe will now categorize by 3 cluster countries
 ```
 
 
@@ -334,6 +334,12 @@ plotPartial(pd)
 Edit this code chunk `k2 <- kmeans(sdr_data_imputed, centers = 2)` under the silhouette plot to increase the number of clusters
 
 - Then, run the code chunk `fviz_cluster(k2, data = sdr_data_imputed) + theme_minimal()` to see the new visualization with the increased number of clusters
+
+Changing the code chunk where it will identify 3 country clusters instead has changed the order where countries are placed.
+- Cluster #1 (attributes are low dim1 and low dim2 values) holds predominately middle income countries, which varies in plenty of regions such as Latin America and Eastern Europe and represents the state the majority of human population is at (world). Countries include Vietnam and Egypt.
+- Cluster #2 (attributes are low dim1 and high dim2 value) holds predominately high income and OCED countries, such as United Arab Emirates and the Netherlands. 
+- Cluster #3 (attributes are high dim1 and high dim2 values) holds predominately low income countries and countries in the region of Sub-Saharan Africa or Oceania. Countries include Zimbabwe and Togo. 
+
   
 #### <span style="color: red;">Challenge 2</span>
 
