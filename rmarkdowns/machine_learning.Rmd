@@ -246,7 +246,8 @@ To answer this question, we train a random forest model to make predictions of m
 
 
 ```{r}
-rf_matmort <- randomForest(normalized_score_sdg3_matmort ~ .,
+# For challenge 2, I will train a random forest model to make predictions of "sustainable nitrogen management index" scores under sustainable development goal 2, "End Hunger"
+rf_snmi <- randomForest(normalized_score_sdg2_snmi ~ .,
                              data = sdr_data_imputed,
                              importance = TRUE)
 ```
@@ -257,14 +258,14 @@ The "% Var explained" value of 80.83 indicates that approximately 80.83% of the 
 
 
 ```{r}
-rf_matmort
+rf_snmi # Only 35.02% of the variance in the target variable (normalized_score_sdg2_snmi) is explained by the predictor variables included in the model.
 ```
 
 Now we can look at the variables most important in making the predictions
 
 
 ```{r}
-importance_df <- as.data.frame(rf_matmort$importance)
+importance_df <- as.data.frame(rf_snmi$importance)
 ```
 
 Let's take the top 10 and graph them
@@ -279,7 +280,7 @@ importance_df_top_10 <- importance_df %>%
 ggplot(importance_df_top_10, aes(x = `%IncMSE`, y = reorder(variable, `%IncMSE`))) +
   geom_bar(stat = "identity", fill = "steelblue", color = "black") +
   theme_minimal() +
-  labs(title = "Most Important Variables in Predicting Maternal Mortality",
+  labs(title = "Most Important Variables in Predicting Sustainability Nitrogen Management Index",
        subtitle = "Top 10",
        y = "SDG Indicator",
        x = "Feature Importance (% Increase in Mean Squared Error)")
@@ -296,7 +297,8 @@ Lastly, we want to know how these important variables influence the prediction: 
 
 
 ```{r}
-pdp::partial(rf_matmort, pred.var = "normalized_score_sdg6_sanita", plot = TRUE)
+# Looking at the partial dependence plot of the influence of the most important influence, cereal yield (normalized_score_sdg2_crlyld), on sustainable nitrogen management index 
+pdp::partial(rf_snmi, pred.var = "normalized_score_sdg2_crlyld", plot = TRUE)
 ```
 
 
@@ -315,7 +317,8 @@ Now that we saw how one variable influences the models prediction, how about 2 v
 
 
 ```{r}
-pd <- pdp::partial(rf_matmort, pred.var = c("normalized_score_sdg6_sanita", "normalized_score_sdg3_u5mort"))
+pd <- pdp::partial(rf_snmi, pred.var = c("normalized_score_sdg6_sanita", "normalized_score_sdg6_scarcew")) # Changed to rf_snmi and the prediction variance will be cereal yield (normalized_score_sdg2_crlyld) and water scarcity (normalized_score_sdg6_scarcew) -- the two most important predictor variables of rf_snmi
+
 # Default PDP
 plotPartial(pd)
 ```
@@ -346,6 +349,7 @@ Changing the code chunk where it will identify 3 country clusters instead has ch
 Edit this code chunk `rf_matmort <- randomForest(normalized_score_sdg3_matmort ~ ., data = sdr_data_imputed, importance = TRUE)` to predict a different indicator score (any indicator other than normalized_score_sdg3_matmort)
 
 - Rename the random forest model from rf_matmort to something that more accurately represents the model (base the name on the indicator you are predicting)
+  I renamed the random forest model from rf_matmort to rf_snmi (snmi is short for "Sustainable Nitrogen Management Index" under the SDG 2, End Hunger)
 
   - Run the remainder of the code chunks below to see the different outputs
     
