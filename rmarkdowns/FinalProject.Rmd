@@ -1,0 +1,175 @@
+---
+title: "Final Project"
+author: "Anthony Zhong"
+date: "2025-12-07"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# All libraries from previous lessons
+library(tidyverse) 
+library(here) 
+library(janitor)
+library(naniar) 
+library(cluster) 
+library(randomForest)
+library(missRanger) 
+library(factoextra) 
+library(pdp)
+library(vembedr)
+library(leaflet)
+library(plotly)
+library(rnaturalearth)
+library(leaflet)
+library(sf)
+library(ggpubr)
+```
+
+Read in Data
+```{r}
+#Reads UN Sustainable Development 2023 Report 
+sdr_data <- read_csv("../data/SDR-2023-Data.csv")
+
+#Cleans data column names
+sdr_data <- sdr_data %>% clean_names()
+```
+
+### VISUALIZATION #1
+```{r}
+swb_histogram <- ggplot(sdr_data, aes(x = normalized_score_sdg3_swb, fill=regions_used_for_the_sdr)) +
+  geom_histogram() +
+  theme_minimal() +
+  scale_fill_viridis_d() + 
+  labs(title = "Distributions of SDG 3 Score",  
+       x = "SDG 3 Score (Subjective Well Being)",
+       y = "Number of Countries",
+       fill = "Region") 
+
+ggplotly(swb_histogram)
+```
+This visualization examines the frequency/count of nations' normalized scores for subjective well-being, measured on a scale of 0 to 100. A score of 0 represents the lowest possible rating a nation could give their own subjective well-being, while 100 represents the highest. I chose to visualize this using a stacked histogram to display the global distribution of these scores and identify how different regions contribute to global trends. The color-coding by region helps reveal distinct geographic insights into where well-being may cluster around. For instance, the nations colored light green belong to the Organisation for Economic Co-operation and Development (OECD), which are generally high-income countries, and they all almost exclusively cluster near the high end of the well-being spectrum. Conversely, the yellow nations, representing the Sub-Saharan Africa region, cluster heavily near the bottom end of the spectrum. Meanwhile, nations in regions like the Middle East & North Africa (MENA), Eastern Europe & Central Asia, and Latin America & the Caribbean (LAC) are scattered more broadly across the middle of the spectrum. Notably, the largest concentration of countries appears to be centered around a score of 60-70. My next visualization will take these scores and plot them on a world map to better isolate specific country performance.
+
+### VISUALIZATION #2
+```{r echo=FALSE}
+# Set up to map visualization
+world <- ne_countries(scale = "medium", returnclass = "sf")
+world <- world %>% select(name_long, iso_a3, geometry)
+colnames(sdr_data)[which(colnames(sdr_data) == "country_code_iso3")] <- "iso_a3"
+sdr_data_world_joined <- left_join(sdr_data, world, by = "iso_a3")
+class(sdr_data_world_joined)
+sdr_data_world_joined <- st_as_sf(sdr_data_world_joined)
+class(sdr_data_world_joined)
+sdr_data_world_joined <- st_transform(sdr_data_world_joined, "+proj=longlat +datum=WGS84")
+
+# Map visualization
+mytext <- paste(
+    "Country: ", sdr_data_world_joined$country,"<br/>", 
+    "Subjective Well Being Score: ", round(sdr_data_world_joined$normalized_score_sdg3_swb, 2),
+    sep="") %>%
+  lapply(htmltools::HTML)
+```
+
+```{r}
+# mypal is my color palette function that maps data to the Spectral colors
+mypal <- colorQuantile(palette = "Spectral", domain = sdr_data_world_joined$normalized_score_sdg3_swb, n = 5)
+
+# Build the map
+leaflet(sdr_data_world_joined) %>% 
+  addTiles() %>% 
+  setView(lat=0, lng=20, zoom=2) %>%
+  addPolygons(
+    stroke = FALSE, 
+    fillOpacity = 0.5, 
+    smoothFactor = 0.5, 
+    color = ~mypal(normalized_score_sdg3_swb), 
+    label = mytext
+  ) %>%
+  addLegend(
+    pal = mypal,                        
+    values = ~normalized_score_sdg3_swb, 
+    opacity = 0.7, 
+    title = "SDG 3 Score (Quantiles)", 
+    position = "bottomright"
+  )
+```
+In this map visualization, each country is colored according to its population's normalized subjective well-being score. As the legend indicates, the deepest red represents the bottom 20% of scores, while the blue countries represent the top 20%. Interestingly, this map highlights distinct characteristics/clusters and other discrepancies that were not as visible in the stacked histogram. For instance, I did not expect India, located in the South Asia region, to have a normalized well-being score of only 13.95 out of 100. Meanwhile, OECD countries like South Korea and Japan fall into the same middle-tier quantile as Brazil and the Philippines, which is a surprising finding given their economic differences. Furthermore, it is striking to see how high the well-being scores of Saudi Arabia and the United Arab Emirates are compared to their immediate neighbors, who mostly score in the bottom two quantiles. Sadly, the  continent of Africa clearly contains the world's lowest well-being values. For instance, countries like Sudan, the Democratic Republic of Congo, and Egypt all score less than 20 out of 100.
+
+Since we have established that some countries are surprisingly low (India) and some are surprisingly high (Saudi Arabia), a logical next step is to ask: "What actually drives these scores?"
+
+### VISUALIZATION #3
+
+```{r results='hide', message=FALSE, warning=FALSE}
+# Preparing for random forest machine learning where it predicts "normalized_score_sdg3_swb" using all other normalized scores 
+rf_data <- sdr_data %>%
+  clean_names() %>%
+  select(normalized_score_sdg3_swb, starts_with("normalized_score"))
+
+# Random Forest fails if there are NAs, so crease rf_data_imputed with missRanger that fills NAs.
+set.seed(123)
+rf_data_imputed <- missRanger(rf_data)
+
+rf_model <- randomForest(normalized_score_sdg3_swb ~ ., 
+                         data = rf_data_imputed, 
+                         importance = TRUE)
+
+rf_model
+```
+
+```{r}
+# Convert the importance metrics into a dataframe for plotting
+importance_df_top_10 <- as.data.frame(rf_model$importance) %>%
+  rownames_to_column(var = "variable") %>%
+  slice_max(n = 10, order_by = `%IncMSE`)
+
+# Bar Plot
+ggplot(importance_df_top_10, aes(x = `%IncMSE`, y = reorder(variable, `%IncMSE`))) +
+  geom_bar(stat = "identity", fill = "steelblue", color = "black") +
+  theme_minimal() +
+  labs(title = "Top 10 Important Variables in Predicting Subjective Well-Being",
+       subtitle = "Top 10",
+       y = "SDG Indicator",
+       x = "Feature Importance (% Increase in Mean Squared Error)")
+
+```
+According to this bar plot, we can identify the top 10 variables that are most important for predicting Subjective Well-Being. The x-axis measures importance using '% Increase in Mean Squared Error'. This tells us how much our model's accuracy would suffer if we removed that specific variable. 
+
+The top two most predictive factors both belong to SDG 3 (Good Health & Well-Being), suggesting the confirmation the saying that health is the foundation of happiness. The single highest predictor is sdg3_neonat (Neonatal Mortality Rate), which measures the number of infants who die before 28 days of age per 1,000 births, according to the [United Nations](https://dashboards.sdgindex.org/map/indicators/neonatal-mortality-rate/). The higher the score, the greater the deaths. This suggests that perhaps the trauma and sadness of losing children is one of the strongest suppressors of one's subjective well-being. 
+
+The second most important factor is sdg3_uhc (Universal Health Coverage), which tracks accessibility to essential services like reproductive and infectious disease care, also according to the [United Nations](https://dashboards.sdgindex.org/map/indicators/universal-health-coverage-uhc-index-of-service-coverage/). Interestingly, the third highest predictor is sdg12_ewaste (Electronic Waste). While e-waste is often seen as a negative environmental metric, in this context, it may be acting as a proxy for access to technology. A low score in e-waste likely means not having access to technology to waste in the first place. This overall trend paints a clear picture: people in countries that suffer from high infant mortality and lack essential health coverage face the deepest challenges in their subjective well-being.
+
+### VISUALIZATION #4
+```{r}
+# Normalized scores Correlation Plot
+correlation_plot <- ggplot(sdr_data, aes(x = normalized_score_sdg3_neonat, 
+                           y = normalized_score_sdg3_swb)) + 
+  geom_point() +
+  geom_smooth() +
+  stat_cor(output.type = "text") +
+  theme_minimal() +
+  labs(title="Correlation of Child Survival and Subjective Well-Being",
+       x = "Score of Neonatal Mortality",
+       y = "Score of Good Health and Well-Being"
+       ) 
+
+ggplotly(correlation_plot, tooltip = "label") # Added interactive plot function
+```
+```{r}
+# Normalized scores Correlation Plot
+correlation_plot2 <- ggplot(sdr_data, 
+  aes(x = neonatal_mortality_rate_per_1_000_live_births, 
+      y = subjective_well_being_average_ladder_score_worst_0_10_best)) + 
+  geom_point() +
+  geom_smooth() +
+  stat_cor(output.type = "text") +
+  theme_minimal() +
+  labs(title="Correlation of Child Survival and Subjective Well-Being",
+       x = "Score of Neonatal Mortality",
+       y = "Score of Good Health and Well-Being"
+       ) 
+
+ggplotly(correlation_plot2, tooltip = "label") # Added interactive plot function
+```
+For my final visualization, I plotted the both the normalized and non-normalized Subjective Well-Being score against the top predictor identified by the Random Forest model: Neonatal Mortality per 1,000. It is crucial to note that because these are 'normalized scores,' a higher value on the X-axis represents a better outcome (fewer deaths). Furthermore, we can see the flip-version when we used non-normalized scores instead. 
+
+Therefore, a score of 100 indicates the lowest possible mortality rate. The scatter plot reveals a very strong positive correlation (R = 0.75), indicated by the steep upward slope of the trend line. Countries in the bottom-left corner have both low survival scores (high mortality) and low well-being scores. Conversely, as we move to the top-right, we see that nations with the highest rates of child survival (scores near 100) also report the highest levels of happiness. This visually confirms the machine learning model's finding: ensuring the survival of the youngest citizens is inextricably linked to the overall happiness of a nation.
